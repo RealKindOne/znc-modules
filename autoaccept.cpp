@@ -1,9 +1,13 @@
 // autoaccept.cpp
-// EXTREMELY HACKED UP version of autoop.cpp 
+// EXTREMELY HACKED UP version of autoop.cpp
 // RUN AT OWN RISK.
-// Follows the same concept of autoop.cpp, but used for /accept'ing people.
 
-// TODO: Clean up left over code for the autoop.cpp specific stuff.
+// The autoop module will op people based on the nick!ident@host, so apply
+//   that logic to auto /accept'ing people
+
+// TODO:
+//    What about telling the user the module sent "You have been /accept'ed."?
+//    Option to change the message?
 
 
 /*
@@ -24,7 +28,6 @@
 
 #include <znc/IRCNetwork.h>
 #include <znc/Modules.h>
-#include <znc/Chan.h>
 
 using std::map;
 using std::set;
@@ -161,7 +164,7 @@ class CAutoAcceptMod : public CModule {
         if (sHost.empty()) {
             PutModule("Usage: AddUser <user> <hostmask>[,<hostmasks>...]");
         } else {
-              CAutoAcceptUser* pUser = AddUser(sUser, sHost, sLine.Token(3, true));
+              CAutoAcceptUser* pUser = AddUser(sUser, sHost);
 
             if (pUser) {
                 SetNV(sUser, pUser->ToString());
@@ -299,7 +302,7 @@ class CAutoAcceptMod : public CModule {
         PutModule("User [" + sUser + "] removed");
     }
 
-      CAutoAcceptUser* AddUser(const CString& sUser, const CString& sHosts, const CString& sChans) {
+      CAutoAcceptUser* AddUser(const CString& sUser, const CString& sHosts) {
         if (m_msUsers.find(sUser) != m_msUsers.end()) {
             PutModule("That user already exists");
             return nullptr;
