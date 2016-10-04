@@ -136,15 +136,16 @@ class CAutoAcceptMod : public CModule {
         m_msUsers.clear();
     }
 
-    EModRet OnRaw(CString& sLine) {
-         //                     1    2       3               4
+    EModRet OnNumericMessage(CNumericMessage& numeric) {
+         //  OnNumericMessage        0       1               2
+         //  OnRaw              1    2       3               4
          // :card.freenode.net 718 KindTwo KindOne kindone@freenude/topless/kindone :is messaging you, and you have umode +g.
-             if (sLine.Token(1) == "718") {
+             if (numeric.GetCode() == 718) {
                  for (const auto& it : m_msUsers) {
                      // Replace that space between "KindOne kindone@..." with a !.
                      // This makes the module work like auto(op|voice).cpp.
-                     if (it.second->HostMatches(sLine.Token(3) + "!" + sLine.Token(4))) {
-                         PutIRC("PRIVMSG " + sLine.Token(3) + " :You have been /accept'ed. Please send again.");
+                     if (it.second->HostMatches(numeric.GetParam(1) + "!" + numeric.GetParam(2))) {
+                         PutIRC("PRIVMSG " + numeric.GetParam(1) + " :You have been /accept'ed. Please send again.");
                          break;
                      }
                  }
