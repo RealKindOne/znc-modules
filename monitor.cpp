@@ -183,10 +183,10 @@ public:
 		return TRUE;
 	}
 
-	EModRet OnRaw(CString& sLine) {
+	EModRet OnNumericMessage(CNumericMessage& numeric) {
 		// RPL_MONONLINE
 		// :irc.freenode.net 730 KindOne :EvilOne!KindOne@1.2.3.4
-		if (sLine.Token(1) == "730") {
+		if (numeric.GetCode() == 730) {
 
 			// Uncomment / comment the other one if you want to switch the output.
 
@@ -194,39 +194,39 @@ public:
 			//PutModule("Online: " + sLine.Token(3).TrimPrefix_n() + "");
 
 			//  Online: EvilOne KindOne@1.2.3.4
-			PutModule("Online: " + sLine.Token(3).TrimPrefix_n().Replace_n("!", " ") + "");
+			PutModule("Online: " + numeric.GetParam(1).TrimPrefix_n().Replace_n("!", " ") + "");
 
 			return HALT;
 		}
 
 		// RPL_MONOFFLINE
 		// :irc.freenode.net 731 KindOne :EvilOne
-		if (sLine.Token(1) == "731") {
+		if (numeric.GetCode() == 731) {
 			// Offine: EvilOne
-			PutModule("Offline: " + sLine.Token(3).TrimPrefix_n() + "");
+			PutModule("Offline: " + numeric.GetParam(1).TrimPrefix_n() + "");
 			return HALT;
 		}
 
 		// RPL_MONLIST
 		// :irc.freenode.net 732 KindOne :EvilOne,EpicOne,KindTwo
-		if (sLine.Token(1) == "732") {
+		if (numeric.GetCode() == 732) {
 			// Nicks: EvilOne EpicOne KindTwo
-			PutModule("Nicks: " + sLine.Token(3).TrimPrefix_n().Replace_n(",", " ") + "");
+			PutModule("Nicks: " + numeric.GetParam(1).TrimPrefix_n().Replace_n(",", " ") + "");
 			return HALT;
 		}
 
 		// RPL_ENDOFMONLIST
 		// :irc.freenode.net 733 KindOne :End of MONITOR list
-		if (sLine.Token(1) == "733") {
+		if (numeric.GetCode() == 733) {
 			PutModule("End of MONITOR list.");
 			return HALT;
 		}
 
 		// ERR_MONLISTFULL
 		// :irc.freenode.net 734 KindOne 100 Nick101,Nick102 :Monitor list is full
-		if (sLine.Token(1) == "734") {
+		if (numeric.GetCode() == 734) {
 			// Error: Monitor List full. Cannot add Nick101 Nick102
-			PutModule("Error: Monitor List full. Cannot add " + sLine.Token(4).Replace_n(",", " ") + "");
+			PutModule("Error: Monitor List full. Cannot add " + numeric.GetParam(2).Replace_n(",", " ") + "");
 			return HALT;
 		}
 
