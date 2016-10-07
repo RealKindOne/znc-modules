@@ -16,8 +16,8 @@ public:
 	virtual ~CChannelURL() {
 	}
 
-	EModRet OnRaw(CString& sLine) {
-		if (sLine.Token(1) == "328") {
+	EModRet OnNumericMessage(CNumericMessage& numeric) {
+		if (numeric.GetCode() == 328) {
 			return HALT;
 		}
 		return CONTINUE;
