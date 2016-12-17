@@ -31,6 +31,7 @@ public:
 				PutIRC("PRIVMSG " + Channel.GetName() + " :" + Nick.GetNick() + " *CLICK*");
 			}
 		}
+		return CONTINUE;
 	}
 };
 
