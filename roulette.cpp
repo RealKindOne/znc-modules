@@ -20,7 +20,7 @@ public:
 	virtual ~Croulette() {}
 
 	virtual EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) override {
-		if ((sMessage.Token(0) == "!roulette") && (Channel.HasPerm(CChan::Op))) {
+		if ((sMessage.Token(0).StripControls() == "!roulette") && (Channel.HasPerm(CChan::Op))) {
 
 			int x = rand()%6+1;
 
