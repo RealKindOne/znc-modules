@@ -1,1 +1,10 @@
-Some znc modules I have created...
+My collection of znc modules.
+
+These are built with git head/master, some of these will not work with 1.6.x.
+
+I have altered some of the default znc modules.
+
+    autovoice
+        - Support multiple hostmask like autoop.
+    log
+        - Revert commit 3f76b8fb1a36e620cee81685769004742c1e402d
