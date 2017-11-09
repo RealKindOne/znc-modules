@@ -145,8 +145,13 @@ class CAutoAcceptMod : public CModule {
                      // Replace that space between "KindOne kindone@..." with a !.
                      // This makes the module work like auto(op|voice).cpp.
                      if (it.second->HostMatches(numeric.GetParam(1) + "!" + numeric.GetParam(2))) {
-                         PutIRC("PRIVMSG " + numeric.GetParam(1) + " :You have been /accept'ed. Please send again.");
-                         break;
+                        // Inspircd + ratbox (efnet) do not automatically put users on the /accept list when you msg them.
+                        // Charybdis has done this since July 3rd / 4th 2010 with the two commits below.
+                        // 0770c9936ef1fc404f04fb4004adc8546abeba7a
+                        // f5455d2cd5e6dd5169ce8006167fffa8475bc493
+                        PutIRC("ACCEPT " + numeric.GetParam(1));
+                        PutIRC("PRIVMSG " + numeric.GetParam(1) + " :You have been /accept'ed. Please send again.");
+                        break;
                      }
                  }
              }
