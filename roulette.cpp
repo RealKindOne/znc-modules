@@ -1,11 +1,6 @@
 // Fun game of roulette.
 // Must be OP for this to work.
 
-// RUN AT OWN RISK.
-
-// First attempt at rand(), I have no idea if thats the correct way, it seems to work.
-
-
 #include <znc/Chan.h>
 #include <znc/Modules.h>
 #include <znc/IRCNetwork.h>
