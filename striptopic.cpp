@@ -27,9 +27,9 @@ class CStripTopicMod : public CModule {
         sTopic.StripControls();
         return CONTINUE;
     }
-    EModRet OnRaw(CString& sLine) {
-        if (sLine.Token(1) == "332") {
-            sLine.StripControls();
+    EModRet OnNumericMessage(CNumericMessage& Message) override {
+        if (Message.GetCode() == 332) {
+            Message.StripControls();
         }
         return CONTINUE;
     }
