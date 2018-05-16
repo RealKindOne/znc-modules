@@ -1,6 +1,6 @@
 // autoaccept.cpp
-// EXTREMELY HACKED UP version of autoop.cpp
-// RUN AT OWN RISK.
+
+// Modified version of autoop module.
 
 // The autoop module will op people based on the nick!ident@host, so apply
 //   that logic to auto /accept'ing people
