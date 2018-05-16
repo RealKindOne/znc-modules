@@ -1,6 +1,4 @@
 // invite.cpp
-// EXTREMELY HACKED UP version of autoop.cpp
-// RUN AT OWN RISK.
 
 // TODO:
 //    Add checks to see if people included the nick.
