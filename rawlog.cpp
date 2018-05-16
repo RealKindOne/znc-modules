@@ -1,6 +1,5 @@
 // Updated for 1.x - KindOne @ chat.freenode.net
 // Turned into a network module. - Loading as a user would spam all networks into a single file.
-// RUN AT OWN RISK ...
 
 // Original Source: https://tomaw.net/tmp/rawlog.cpp
 
