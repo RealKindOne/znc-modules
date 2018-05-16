@@ -1,6 +1,4 @@
 // notice.cpp
-// EXTREMELY HACKED UP version of autoop.cpp
-// RUN AT OWN RISK.
 
 // Module rejects all notices unless the sender is added.
 // Module also converts the notices into PRIVMSG's because notices annoy me.
