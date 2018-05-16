@@ -1,6 +1,5 @@
 // Initial version created by "KindOne @ chat.freenode.net".
 //
-// EXTREMELY CRUDE ZNC module to hide the "[freenode-info]" lines.
 //
 // TODO ...
 //
