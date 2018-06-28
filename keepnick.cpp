@@ -1,20 +1,6 @@
 // You will need to add "MONITOR + nick" into the perform module or client side
 // for this module to work.
 
-// If you have anyone else in your MONITOR list the module will just try to /nick even if
-// its not the nick you are after.
-
-// MONITOR + KindOne
-// MONITOR + lol
-
-// [2018-05-16 14:30:51.919595] (KindOne/foobar) IRC -> ZNC [:lol!kindone@127.0.0.1 QUIT :Quit: ...]
-// [2018-05-16 14:30:51.920229] (KindOne/foobar) ZNC -> CLI [:lol!kindone@127.0.0.1 QUIT :Quit: ...]
-// [2018-05-16 14:30:51.920488] (KindOne/foobar) IRC -> ZNC [:irc.foobar.net 731 * :lol]
-// [2018-05-16 14:30:51.920860] (KindOne/foobar) ZNC -> IRC [NICK KindOne]
-// [2018-05-16 14:30:51.921106] (KindOne/foobar) ZNC -> CLI [:irc.foobar.net 731 * :lol]
-// [2018-05-16 14:30:51.953070] (KindOne/foobar) IRC -> ZNC [:irc.foobar.net 433 KindOne_ KindOne :Nickname is already in use.]
-
-
 /*
  * Copyright (C) 2004-2018 ZNC, see the NOTICE file for details.
  *
@@ -200,7 +186,7 @@ class CKeepNickMod : public CModule {
             }
             // MONITOR
             // :irc.foobar.net 731 * :NICK
-            if (msg.GetCode() == 731) {
+            if (msg.GetCode() == 731 && msg.GetParam(1).Equals(GetNick())) {
                 KeepNick();
             }
         }
