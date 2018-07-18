@@ -53,7 +53,7 @@ class CstripinputMod : public CModule {
 
 template <>
 void TModInfo<CstripinputMod>(CModInfo& Info) {
-    Info.SetWikiPage("stripinput");
+//  Info.SetWikiPage("stripinput");
     Info.AddType(CModInfo::UserModule);
 }
 
