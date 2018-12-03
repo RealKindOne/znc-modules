@@ -284,16 +284,6 @@ class CAutoAcceptMod : public CModule {
         return nullptr;
     }
 
-	bool CheckAutoAccept(const CNick& Nick) {
-		CAutoAcceptUser* pUser = FindUserByHost(Nick.GetHostMask());
-
-        if (!pUser) {
-            return false;
-        }
-
-        return true;
-    }
-
     void DelUser(const CString& sUser) {
         map<CString, CAutoAcceptUser*>::iterator it =
             m_msUsers.find(sUser.AsLower());
