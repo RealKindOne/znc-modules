@@ -271,16 +271,6 @@ class CinviteMod : public CModule {
         return nullptr;
     }
 
-	bool Checkinvite(const CNick& Nick) {
-		CinviteUser* pUser = FindUserByHost(Nick.GetHostMask());
-
-        if (!pUser) {
-            return false;
-        }
-
-        return true;
-    }
-
     void DelUser(const CString& sUser) {
         map<CString, CinviteUser*>::iterator it =
             m_msUsers.find(sUser.AsLower());
