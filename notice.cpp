@@ -266,16 +266,6 @@ class CnoticeMod : public CModule {
         return nullptr;
     }
 
-	bool Checknotice(const CNick& Nick) {
-		CnoticeUser* pUser = FindUserByHost(Nick.GetHostMask());
-
-        if (!pUser) {
-            return false;
-        }
-
-        return true;
-    }
-
     void DelUser(const CString& sUser) {
         map<CString, CnoticeUser*>::iterator it =
             m_msUsers.find(sUser.AsLower());
