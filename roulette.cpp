@@ -16,7 +16,8 @@ public:
 
 	virtual EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) override {
 		if ((sMessage.Token(0).StripControls() == "!roulette") && (Channel.HasPerm(CChan::Op))) {
-
+			// Channel might be -n. Block outside users from playing.
+			if (Channel.FindNick(Nick.GetNick())  ==  nullptr) { return HALT; }
 			int x = rand()%6+1;
 
 			if (x == 4) {
