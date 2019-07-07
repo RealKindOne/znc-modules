@@ -155,6 +155,18 @@ class CAutoAcceptMod : public CModule {
                      }
                  }
              }
+             // RPL_MONONLINE
+             // :irc.freenode.net 730 KindOne :EvilOne!KindOne@1.2.3.4
+             if (numeric.GetCode() == 730) {
+                 for (const auto& it : m_msUsers) {
+                     if (it.second->HostMatches(numeric.GetParam(1))) {
+                        // Borrowed from test/Nicktest.cpp
+                       CNick Nick1( numeric.GetParam(1) );
+                       PutIRC("ACCEPT " + Nick1.GetNick() );
+                       break;
+                     }
+                 }
+           }
             return CONTINUE;
      }
 
