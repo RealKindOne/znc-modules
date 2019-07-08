@@ -8,6 +8,11 @@
 // TODO:
 //    What about telling the user the module sent "You have been /accept'ed."?
 //    Option to change the message?
+//    OnJoin()
+//        Figure out how to make it only execute once. It will trigger multiple times
+//        if someone joins multiple channels.
+
+
 
 
 /*
