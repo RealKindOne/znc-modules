@@ -170,6 +170,16 @@ class CAutoAcceptMod : public CModule {
             return CONTINUE;
      }
 
+    // If someone switches nicks add the new one.
+    void OnNick(const CNick& OldNick, const CString& sNewNick, const vector<CChan*>& vChans) override {
+        for (const auto& it : m_msUsers) {
+            if (it.second->HostMatches(sNewNick + "!" + OldNick.GetIdent() + "@" + OldNick.GetHost())) {
+                PutIRC("ACCEPT " + sNewNick );
+                break;
+            }
+        }
+    }
+
     void OnModCommand(const CString& sLine) override {
         CString sCommand = sLine.Token(0).AsUpper();
             HandleCommand(sLine);
