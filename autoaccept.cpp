@@ -178,6 +178,8 @@ class CAutoAcceptMod : public CModule {
 
     // If someone switches nicks add the new one.
     void OnNick(const CNick& OldNick, const CString& sNewNick, const vector<CChan*>& vChans) override {
+        // Don't /accept our new nick if we change.
+        if (sNewNick == m_pNetwork->GetIRCNick().GetNick()) { return; }
         for (const auto& it : m_msUsers) {
             if (it.second->HostMatches(sNewNick + "!" + OldNick.GetIdent() + "@" + OldNick.GetHost())) {
                 PutIRC("ACCEPT " + sNewNick );
