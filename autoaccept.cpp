@@ -7,7 +7,6 @@
 
 // TODO:
 //    What about telling the user the module sent "You have been /accept'ed."?
-//    Option to change the message?
 //    OnJoin()
 //        Figure out how to make it only execute once. It will trigger multiple times
 //        if someone joins multiple channels.
@@ -33,6 +32,8 @@
 
 #include <znc/IRCNetwork.h>
 #include <znc/Modules.h>
+
+#define MESSAGE "You have been /accept'ed. Please send again."
 
 using std::map;
 using std::set;
@@ -155,7 +156,7 @@ class CAutoAcceptMod : public CModule {
                         // 0770c9936ef1fc404f04fb4004adc8546abeba7a
                         // f5455d2cd5e6dd5169ce8006167fffa8475bc493
                         PutIRC("ACCEPT " + numeric.GetParam(1));
-                        PutIRC("PRIVMSG " + numeric.GetParam(1) + " :You have been /accept'ed. Please send again.");
+                        PutIRC("PRIVMSG " + numeric.GetParam(1) + " :" MESSAGE);
                         break;
                      }
                  }
