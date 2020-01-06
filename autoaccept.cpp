@@ -143,9 +143,6 @@ class CAutoAcceptMod : public CModule {
     }
 
     EModRet OnNumericMessage(CNumericMessage& numeric) {
-         //  OnNumericMessage        0       1               2
-         //  OnRaw              1    2       3               4
-         // :card.freenode.net 718 KindTwo KindOne kindone@freenude/topless/kindone :is messaging you, and you have umode +g.
              if (numeric.GetCode() == 718) {
                  for (const auto& it : m_msUsers) {
                      // Replace that space between "KindOne kindone@..." with a !.
