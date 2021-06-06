@@ -2,9 +2,6 @@
 
 // Modified version of autoop module.
 
-// The autoop module will op people based on the nick!ident@host, so apply
-//   that logic to auto /accept'ing people
-
 // TODO:
 //    What about telling the user the module sent "You have been /accept'ed."?
 //    OnJoin()
@@ -95,7 +92,8 @@ class CAutoAcceptUser {
 
     bool FromString(const CString& sLine) {
         m_sUsername = sLine.Token(0, false, "\t");
-        sLine.Token(1, false, "\t").Split(",", m_ssHostmasks);
+        // Trim because there was a bug which caused spaces in the hostname
+        sLine.Token(1, false, "\t").Trim_n().Split(",", m_ssHostmasks);
 	return true;
     }
 
@@ -248,7 +246,7 @@ class CAutoAcceptMod : public CModule {
 
     void OnAddMasksCommand(const CString& sLine) {
         CString sUser = sLine.Token(1);
-        CString sHostmasks = sLine.Token(2, true);
+        CString sHostmasks = sLine.Token(2);
 
         if (sHostmasks.empty()) {
             PutModule("Usage: AddMasks <user> <mask>,[mask] ...");
@@ -269,7 +267,7 @@ class CAutoAcceptMod : public CModule {
 
     void OnDelMasksCommand(const CString& sLine) {
         CString sUser = sLine.Token(1);
-        CString sHostmasks = sLine.Token(2, true);
+        CString sHostmasks = sLine.Token(2);
 
         if (sHostmasks.empty()) {
             PutModule("Usage: DelMasks <user> <mask>,[mask] ...");
