@@ -1,13 +1,7 @@
-// Initial version created by "KindOne @ chat.freenode.net".
+// Initial version created by "KindOne @ irc.libera.chat".
 //
-// EXTREMELY CRUDE ZNC module to support MONITOR.
+// Module to support MONITOR.
 // http://ircv3.org/specification/monitor-3.2
-//
-// Most likely can be written better.
-//
-// Tested/compiled against this version of ZNC, should in theory work with 1.2/1.4.
-// <*status> ZNC 1.5-git-211-154bf9f - http://znc.in
-// <*status> IPv6: yes, SSL: yes, DNS: threads, charset: yes
 //
 // TODO ...
 //
@@ -185,7 +179,7 @@ public:
 
 	EModRet OnNumericMessage(CNumericMessage& numeric) {
 		// RPL_MONONLINE
-		// :irc.freenode.net 730 KindOne :EvilOne!KindOne@1.2.3.4
+		// :irc.libera.chat 730 KindOne :EvilOne!KindOne@1.2.3.4
 		if (numeric.GetCode() == 730) {
 
 			// Uncomment / comment the other one if you want to switch the output.
@@ -200,7 +194,7 @@ public:
 		}
 
 		// RPL_MONOFFLINE
-		// :irc.freenode.net 731 KindOne :EvilOne
+		// :irc.libera.chat 731 KindOne :EvilOne
 		if (numeric.GetCode() == 731) {
 			// Offine: EvilOne
 			PutModule("Offline: " + numeric.GetParam(1).TrimPrefix_n() + "");
@@ -208,7 +202,7 @@ public:
 		}
 
 		// RPL_MONLIST
-		// :irc.freenode.net 732 KindOne :EvilOne,EpicOne,KindTwo
+		// :irc.libera.chat 732 KindOne :EvilOne,EpicOne,KindTwo
 		if (numeric.GetCode() == 732) {
 			// Nicks: EvilOne EpicOne KindTwo
 			PutModule("Nicks: " + numeric.GetParam(1).TrimPrefix_n().Replace_n(",", " ") + "");
@@ -216,14 +210,14 @@ public:
 		}
 
 		// RPL_ENDOFMONLIST
-		// :irc.freenode.net 733 KindOne :End of MONITOR list
+		// :irc.libera.chat 733 KindOne :End of MONITOR list
 		if (numeric.GetCode() == 733) {
 			PutModule("End of MONITOR list.");
 			return HALT;
 		}
 
 		// ERR_MONLISTFULL
-		// :irc.freenode.net 734 KindOne 100 Nick101,Nick102 :Monitor list is full
+		// :irc.libera.chat 734 KindOne 100 Nick101,Nick102 :Monitor list is full
 		if (numeric.GetCode() == 734) {
 			// Error: Monitor List full. Cannot add Nick101 Nick102
 			PutModule("Error: Monitor List full. Cannot add " + numeric.GetParam(2).Replace_n(",", " ") + "");
