@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2017 ZNC, see the NOTICE file for details.
+ * Copyright (C) 2004-2025 ZNC, see the NOTICE file for details.
  * Copyright (C) 2006-2007, CNU <bshalm@broadpark.no>
  *(http://cnu.dieplz.net/znc)
  *
@@ -167,6 +167,7 @@ void CLogMod::ListRulesCmd(const CString& sLine) {
     CTable Table;
     Table.AddColumn(t_s("Rule", "listrules"));
     Table.AddColumn(t_s("Logging enabled", "listrules"));
+    Table.SetStyle(CTable::ListStyle);
 
     for (const CLogRule& Rule : m_vRules) {
         Table.AddRow();
@@ -284,7 +285,7 @@ void CLogMod::PutLog(const CString& sLine,
     // TODO: Properly handle IRC case mapping
     // $WINDOW has to be handled last, since it can contain %
     sPath.Replace("$USER",
-                  CString((GetUser() ? GetUser()->GetUserName() : "UNKNOWN")));
+                  CString((GetUser() ? GetUser()->GetUsername() : "UNKNOWN")));
     sPath.Replace("$NETWORK",
                   CString((GetNetwork() ? GetNetwork()->GetName() : "znc")));
     sPath.Replace("$WINDOW", CString(sWindow.Replace_n("/", "-")
@@ -438,10 +439,14 @@ void CLogMod::OnKick(const CNick& OpNick, const CString& sKickedNick,
 void CLogMod::OnQuit(const CNick& Nick, const CString& sMessage,
                      const vector<CChan*>& vChans) {
     if (NeedQuits()) {
-        for (CChan* pChan : vChans)
+        for (CChan* pChan : vChans) {
+            // Core calls this only for enabled channels, but
+            // OnSendToIRCMessage() below calls OnQuit() for all channels.
+            if (pChan->IsDisabled()) continue;
             PutLog("*** Quits: " + Nick.GetNick() + " (" + Nick.GetIdent() +
                        "@" + Nick.GetHost() + ") (" + sMessage + ")",
                    *pChan);
+        }
     }
 }
 
