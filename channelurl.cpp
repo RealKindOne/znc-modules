@@ -9,26 +9,23 @@
 using std::vector;
 
 class CChannelURL : public CModule {
-public:
-	MODCONSTRUCTOR(CChannelURL) {
-	}
+  public:
+    MODCONSTRUCTOR(CChannelURL) {}
 
-	virtual ~CChannelURL() {
-	}
+    virtual ~CChannelURL() {}
 
-	EModRet OnNumericMessage(CNumericMessage& numeric) {
-		if (numeric.GetCode() == 328) {
-			return HALT;
-		}
-		return CONTINUE;
-	}
+    EModRet OnNumericMessage(CNumericMessage& numeric) {
+        if (numeric.GetCode() == 328) {
+            return HALT;
+        }
+        return CONTINUE;
+    }
 };
 
-
-template<> void TModInfo<CChannelURL>(CModInfo& Info) {
-//	Info.SetWikiPage("ChannelURL");
-	Info.SetHasArgs(false);
-	Info.AddType(CModInfo::NetworkModule);
+template <>
+void TModInfo<CChannelURL>(CModInfo& Info) {
+    //	Info.SetWikiPage("ChannelURL");
+    Info.SetHasArgs(false);
 }
 
 NETWORKMODULEDEFS(CChannelURL, "Hide Channel URL (Numeric 328) from IRC clients.")
