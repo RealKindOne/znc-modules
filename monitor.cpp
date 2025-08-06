@@ -51,208 +51,199 @@
 //		- Other things that I might of missed and/or can't think of.
 //
 
-
 #include <znc/IRCNetwork.h>
 #include <znc/Modules.h>
-
 
 using std::vector;
 
 class CMonitor : public CModule {
+    // Add Nicks.
+    void Add(const CString& sCommand) {
+        CString sMon = sCommand.Token(1, true);
 
-	// Add Nicks.
-	void Add(const CString& sCommand) {
-		CString sMon = sCommand.Token(1, true);
+        if (sMon.empty()) {
+            PutModule("Usage: add <nick>");
+            return;
+        }
 
-		if (sMon.empty()) {
-			PutModule("Usage: add <nick>");
-			return;
-		}
+        m_vMonitor.push_back(ParseMonitor(sMon));
+        // Add the nick to the MONITOR list immediately.
+        // The IRCd has to send it back, so the "Added" line will be seen first.
+        if (m_pNetwork->IsIRCConnected()) {
+            PutIRC("MONITOR + " + sMon);
+            PutModule("Added " + sMon);
+            Save();
+        } else {
+            PutModule("Added " + sMon);
+            Save();
+        }
+    }
 
-		m_vMonitor.push_back(ParseMonitor(sMon));
-		// Add the nick to the MONITOR list immediately.
-		// The IRCd has to send it back, so the "Added" line will be seen first.
-		if (m_pNetwork->IsIRCConnected()) {
-			PutIRC("MONITOR + " + sMon);
-			PutModule("Added " + sMon);
-			Save();
-		}
-		else {
-			PutModule("Added " + sMon);
-			Save();
-		}
-}
+    // Delete Nicks.
+    void Del(const CString& sCommand) {
+        u_int iNum = sCommand.Token(1, true).ToUInt();
 
-	// Delete Nicks.
-	void Del(const CString& sCommand) {
-		u_int iNum = sCommand.Token(1, true).ToUInt();
+        if (iNum > m_vMonitor.size() || iNum <= 0) {
+            PutModule("Invalid # Requested");
+            return;
+        } else {
+            m_vMonitor.erase(m_vMonitor.begin() + iNum - 1);
+            PutModule("Nick Erased.");
+        }
+        Save();
+    }
 
-		if (iNum > m_vMonitor.size() || iNum <= 0) {
-			PutModule("Invalid # Requested");
-			return;
-		}
-		else {
-			m_vMonitor.erase(m_vMonitor.begin() + iNum - 1);
-			PutModule("Nick Erased.");
-		}
-		Save();
-	}
+    // List Nicks.
+    void List(const CString& sCommand) {
+        CTable Table;
+        unsigned int index = 1;
 
-	// List Nicks.
-	void List(const CString& sCommand) {
-		CTable Table;
-		unsigned int index = 1;
+        Table.AddColumn("Id");
+        Table.AddColumn("Nick");
 
-		Table.AddColumn("Id");
-		Table.AddColumn("Nick");
+        for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it, index++) {
+            Table.AddRow();
+            Table.SetCell("Id", CString(index));
+            Table.SetCell("Nick", *it);
 
-		for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it, index++) {
-			Table.AddRow();
-			Table.SetCell("Id", CString(index));
-			Table.SetCell("Nick", *it);
+            CString sExpanded = ExpandString(*it);
+        }
 
-			CString sExpanded = ExpandString(*it);
-		}
+        if (PutModule(Table) == 0) {
+            PutModule("No nicks found.");
+        }
+    }
 
-		if (PutModule(Table) == 0) {
-			PutModule("No nicks found.");
-		}
-	}
+    // Instead of reloading the module, let them do this.
+    void Reload(const CString& sCommand) {
+        GetNV("Monitor").Split("\n", m_vMonitor, false);
+        // Clear the list on load.
+        PutIRC("MONITOR C");
 
-	// Instead of reloading the module, let them do this.
-	void Reload(const CString& sCommand) {
-		GetNV("Monitor").Split("\n", m_vMonitor, false);
-		// Clear the list on load.
-		PutIRC("MONITOR C");
+        for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
+            // Add the nicks from the list
+            PutIRC("MONITOR + " + *it);
+        }
+    }
 
-		for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
-			// Add the nicks from the list
-			PutIRC("MONITOR + " + *it);
-		}
-	}
+    // Move the nicks around.
+    void Swap(const CString& sCommand) {
+        u_int iNumA = sCommand.Token(1).ToUInt();
+        u_int iNumB = sCommand.Token(2).ToUInt();
 
-	// Move the nicks around.
-	void Swap(const CString& sCommand) {
-		u_int iNumA = sCommand.Token(1).ToUInt();
-		u_int iNumB = sCommand.Token(2).ToUInt();
+        if (iNumA > m_vMonitor.size() || iNumA <= 0 || iNumB > m_vMonitor.size() || iNumB <= 0) {
+            PutModule("Illegal # Requested");
+        } else {
+            std::iter_swap(m_vMonitor.begin() + (iNumA - 1), m_vMonitor.begin() + (iNumB - 1));
+            PutModule("Nicks Swapped.");
+            Save();
+        }
+    }
 
-		if (iNumA > m_vMonitor.size() || iNumA <= 0 || iNumB > m_vMonitor.size() || iNumB <= 0) {
-			PutModule("Illegal # Requested");
-		}
-		else {
-			std::iter_swap(m_vMonitor.begin() + (iNumA - 1), m_vMonitor.begin() + (iNumB - 1));
-			PutModule("Nicks Swapped.");
-			Save();
-		}
-	}
+  public:
+    MODCONSTRUCTOR(CMonitor) {
+        AddHelpCommand();
+        AddCommand("Add", static_cast<CModCommand::ModCmdFunc>(&CMonitor::Add), "<nick>");
+        AddCommand("Del", static_cast<CModCommand::ModCmdFunc>(&CMonitor::Del), "<id number");
+        AddCommand("List", static_cast<CModCommand::ModCmdFunc>(&CMonitor::List));
+        AddCommand("Reload", static_cast<CModCommand::ModCmdFunc>(&CMonitor::Reload), "Reload the module");
+        AddCommand("Swap", static_cast<CModCommand::ModCmdFunc>(&CMonitor::Swap), "<number> <number>");
+    }
 
-public:
-	MODCONSTRUCTOR(CMonitor) {
-		AddHelpCommand();
-		AddCommand("Add",     static_cast<CModCommand::ModCmdFunc>(&CMonitor::Add), "<nick>");
-		AddCommand("Del",     static_cast<CModCommand::ModCmdFunc>(&CMonitor::Del), "<id number");
-		AddCommand("List",    static_cast<CModCommand::ModCmdFunc>(&CMonitor::List));
-		AddCommand("Reload",  static_cast<CModCommand::ModCmdFunc>(&CMonitor::Reload), "Reload the module");
-		AddCommand("Swap",    static_cast<CModCommand::ModCmdFunc>(&CMonitor::Swap), "<number> <number>");
-	}
+    virtual ~CMonitor() {
+    }
 
-	virtual ~CMonitor() {
-	}
+    CString ParseMonitor(const CString& sArg) const {
+        CString sMon = sArg;
+        return sMon;
+    }
 
-	CString ParseMonitor(const CString& sArg) const {
-		CString sMon = sArg;
-		return sMon;
-	}
+    bool OnLoad(const CString& sArgs, CString& sMessage) {
+        GetNV("Monitor").Split("\n", m_vMonitor, false);
+        // Clear the list on load.
+        PutIRC("MONITOR C");
 
+        for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
+            // Add the nicks from the list
+            PutIRC("MONITOR + " + *it);
+        }
+        return true;
+    }
 
-	bool OnLoad(const CString& sArgs, CString& sMessage) {
-		GetNV("Monitor").Split("\n", m_vMonitor, false);
-		// Clear the list on load.
-		PutIRC("MONITOR C");
+    EModRet OnNumericMessage(CNumericMessage& numeric) {
+        // RPL_MONONLINE
+        // :irc.libera.chat 730 KindOne :EvilOne!KindOne@1.2.3.4
+        if (numeric.GetCode() == 730) {
+            // Uncomment / comment the other one if you want to switch the output.
 
-		for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
-			// Add the nicks from the list
-			PutIRC("MONITOR + " + *it);
-		}
-		return TRUE;
-	}
+            //  Online: EvilOne!KindOne@1.2.3.4
+            //PutModule("Online: " + sLine.Token(3).TrimPrefix_n() + "");
 
-	EModRet OnNumericMessage(CNumericMessage& numeric) {
-		// RPL_MONONLINE
-		// :irc.libera.chat 730 KindOne :EvilOne!KindOne@1.2.3.4
-		if (numeric.GetCode() == 730) {
+            //  Online: EvilOne KindOne@1.2.3.4
+            PutModule("Online: " + numeric.GetParam(1).TrimPrefix_n().Replace_n("!", " ") + "");
 
-			// Uncomment / comment the other one if you want to switch the output.
+            return HALT;
+        }
 
-			//  Online: EvilOne!KindOne@1.2.3.4
-			//PutModule("Online: " + sLine.Token(3).TrimPrefix_n() + "");
+        // RPL_MONOFFLINE
+        // :irc.libera.chat 731 KindOne :EvilOne
+        if (numeric.GetCode() == 731) {
+            // Offine: EvilOne
+            PutModule("Offline: " + numeric.GetParam(1).TrimPrefix_n() + "");
+            return HALT;
+        }
 
-			//  Online: EvilOne KindOne@1.2.3.4
-			PutModule("Online: " + numeric.GetParam(1).TrimPrefix_n().Replace_n("!", " ") + "");
+        // RPL_MONLIST
+        // :irc.libera.chat 732 KindOne :EvilOne,EpicOne,KindTwo
+        if (numeric.GetCode() == 732) {
+            // Nicks: EvilOne EpicOne KindTwo
+            PutModule("Nicks: " + numeric.GetParam(1).TrimPrefix_n().Replace_n(",", " ") + "");
+            return HALT;
+        }
 
-			return HALT;
-		}
+        // RPL_ENDOFMONLIST
+        // :irc.libera.chat 733 KindOne :End of MONITOR list
+        if (numeric.GetCode() == 733) {
+            PutModule("End of MONITOR list.");
+            return HALT;
+        }
 
-		// RPL_MONOFFLINE
-		// :irc.libera.chat 731 KindOne :EvilOne
-		if (numeric.GetCode() == 731) {
-			// Offine: EvilOne
-			PutModule("Offline: " + numeric.GetParam(1).TrimPrefix_n() + "");
-			return HALT;
-		}
+        // ERR_MONLISTFULL
+        // :irc.libera.chat 734 KindOne 100 Nick101,Nick102 :Monitor list is full
+        if (numeric.GetCode() == 734) {
+            // Error: Monitor List full. Cannot add Nick101 Nick102
+            PutModule("Error: Monitor List full. Cannot add " + numeric.GetParam(2).Replace_n(",", " ") + "");
+            return HALT;
+        }
 
-		// RPL_MONLIST
-		// :irc.libera.chat 732 KindOne :EvilOne,EpicOne,KindTwo
-		if (numeric.GetCode() == 732) {
-			// Nicks: EvilOne EpicOne KindTwo
-			PutModule("Nicks: " + numeric.GetParam(1).TrimPrefix_n().Replace_n(",", " ") + "");
-			return HALT;
-		}
+        return CONTINUE;
+    }
 
-		// RPL_ENDOFMONLIST
-		// :irc.libera.chat 733 KindOne :End of MONITOR list
-		if (numeric.GetCode() == 733) {
-			PutModule("End of MONITOR list.");
-			return HALT;
-		}
+    void OnIRCConnected() {
+        for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
+            // Add the nicks from the list
+            PutIRC("MONITOR + " + *it);
+        }
+    }
 
-		// ERR_MONLISTFULL
-		// :irc.libera.chat 734 KindOne 100 Nick101,Nick102 :Monitor list is full
-		if (numeric.GetCode() == 734) {
-			// Error: Monitor List full. Cannot add Nick101 Nick102
-			PutModule("Error: Monitor List full. Cannot add " + numeric.GetParam(2).Replace_n(",", " ") + "");
-			return HALT;
-		}
+  private:
+    void Save() {
+        CString sBuffer = "";
 
-		return CONTINUE;
-	}
+        for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
+            sBuffer += *it + "\n";
+        }
+        SetNV("Monitor", sBuffer);
+    }
 
-	void OnIRCConnected() {
-
-		for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
-			// Add the nicks from the list
-			PutIRC("MONITOR + " + *it);
-		}
-	}
-
-
-private:
-	void Save() {
-		CString sBuffer = "";
-
-		for (VCString::const_iterator it = m_vMonitor.begin(); it != m_vMonitor.end(); ++it) {
-			sBuffer += *it + "\n";
-		}
-		SetNV("Monitor", sBuffer);
-	}
-
-	VCString m_vMonitor;
+    VCString m_vMonitor;
 };
 
-template<> void TModInfo<CMonitor>(CModInfo& Info) {
-//	Info.SetWikiPage("monitor");
-	Info.SetHasArgs(false);
-	Info.AddType(CModInfo::NetworkModule);
+template <>
+void TModInfo<CMonitor>(CModInfo& Info) {
+    //	Info.SetWikiPage("monitor");
+    Info.SetHasArgs(false);
+    Info.AddType(CModInfo::NetworkModule);
 }
 
 NETWORKMODULEDEFS(CMonitor, "IRCv3 MONITOR support.")
