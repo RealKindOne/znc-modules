@@ -1,13 +1,12 @@
 // Disconnect On Ban module.
 // Prevent your ZNC from re-connecting to a network if you are network banned.
 
-#include <znc/Modules.h>
 #include <znc/IRCNetwork.h>
-#include <znc/User.h>         // For GetUser()->GetStatusPrefix()
+#include <znc/Modules.h>
+#include <znc/User.h>  // For GetUser()->GetStatusPrefix()
 
 class Cdisconnectonban : public CModule {
-
-public:
+  public:
     MODCONSTRUCTOR(Cdisconnectonban) {}
 
     virtual ~Cdisconnectonban() {}
@@ -29,7 +28,7 @@ public:
     }
 };
 
-template<>
+template <>
 void TModInfo<Cdisconnectonban>(CModInfo& Info) {
     //Info.SetWikiPage("disconnectonban");
 }
