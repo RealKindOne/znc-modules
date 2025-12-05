@@ -1,7 +1,9 @@
 // notice.cpp
+//
+// Convert NOTICE to PRIVMSG from specific based on nick!ident@host matching.
+// If the nick!ident@host is not in the list then the NOTICE is not converted.
 
-// Module rejects all notices unless the sender is added.
-// Module also converts the notices into PRIVMSG's because notices annoy me.
+// Copy/paste of autoop with some slight modifications.
 
 /*
  * Copyright (C) 2004-2016 ZNC, see the NOTICE file for details.
@@ -78,15 +80,14 @@ class CnoticeUser {
     }
 
     CString ToString() const {
-          return m_sUsername + "\t" + GetHostmasks();
+        return m_sUsername + "\t" + GetHostmasks();
     }
 
     bool FromString(const CString& sLine) {
         m_sUsername = sLine.Token(0, false, "\t");
         sLine.Token(1, false, "\t").Split(",", m_ssHostmasks);
-	return true;
+        return true;
     }
-
 
   private:
   protected:
@@ -98,15 +99,14 @@ class CnoticeMod : public CModule {
   public:
     MODCONSTRUCTOR(CnoticeMod) {
         AddHelpCommand();
-        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>( &CnoticeMod::OnListUsersCommand), "", "List all users");
-        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>( &CnoticeMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
-        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>( &CnoticeMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
-        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>( &CnoticeMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
-        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>( &CnoticeMod::OnDelUserCommand), "<user>", "Removes a user");
+        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>(&CnoticeMod::OnListUsersCommand), "", "List all users");
+        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>(&CnoticeMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
+        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>(&CnoticeMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
+        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>(&CnoticeMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
+        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>(&CnoticeMod::OnDelUserCommand), "<user>", "Removes a user");
     }
 
     bool OnLoad(const CString& sArgs, CString& sMessage) override {
-
         // Load the users
         for (MCString::iterator it = BeginNV(); it != EndNV(); ++it) {
             const CString& sLine = it->second;
@@ -130,19 +130,22 @@ class CnoticeMod : public CModule {
         m_msUsers.clear();
     }
 
-    virtual EModRet OnPrivNotice(CNick& Nick, CString& sMessage) {
+    virtual EModRet OnPrivNoticeMessage(CNoticeMessage& Message) override {
+        const CNick& Nick = Message.GetNick();
+        CString sMessage = Message.GetText();
+
         for (const auto& it : m_msUsers) {
             if (it.second->HostMatches(Nick.GetNickMask())) {
                 PutUser(":" + Nick.GetNickMask() + " PRIVMSG " + GetUser()->GetNick() + " :" + sMessage);
-                break;
+                return HALTCORE;  // Block original NOTICE since we converted it
             }
         }
-        return HALTCORE;
+        return CONTINUE;  // Allow original NOTICE to pass through
     }
 
     void OnModCommand(const CString& sLine) override {
         CString sCommand = sLine.Token(0).AsUpper();
-            HandleCommand(sLine);
+        HandleCommand(sLine);
     }
 
     void OnAddUserCommand(const CString& sLine) {
@@ -152,7 +155,7 @@ class CnoticeMod : public CModule {
         if (sHost.empty()) {
             PutModule("Usage: AddUser <user> <hostmask>[,<hostmasks>...]");
         } else {
-              CnoticeUser* pUser = AddUser(sUser, sHost);
+            CnoticeUser* pUser = AddUser(sUser, sHost);
 
             if (pUser) {
                 SetNV(sUser, pUser->ToString());
@@ -255,7 +258,7 @@ class CnoticeMod : public CModule {
         return (it != m_msUsers.end()) ? it->second : nullptr;
     }
 
-	CnoticeUser* FindUserByHost(const CString& sHostmask) {
+    CnoticeUser* FindUserByHost(const CString& sHostmask) {
         for (const auto& it : m_msUsers) {
             CnoticeUser* pUser = it.second;
             if (pUser->HostMatches(sHostmask)) {
@@ -280,7 +283,7 @@ class CnoticeMod : public CModule {
         PutModule("User [" + sUser + "] removed");
     }
 
-      CnoticeUser* AddUser(const CString& sUser, const CString& sHosts) {
+    CnoticeUser* AddUser(const CString& sUser, const CString& sHosts) {
         if (m_msUsers.find(sUser) != m_msUsers.end()) {
             PutModule("That user already exists");
             return nullptr;
@@ -292,15 +295,13 @@ class CnoticeMod : public CModule {
         return pUser;
     }
 
-
   private:
     map<CString, CnoticeUser*> m_msUsers;
 };
 
-
 template <>
 void TModInfo<CnoticeMod>(CModInfo& Info) {
-//    Info.SetWikiPage("notice");
+    //    Info.SetWikiPage("notice");
 }
 
 NETWORKMODULEDEFS(CnoticeMod, "Convert NOTICE's into PRIVMSG's.")
