@@ -2,7 +2,7 @@
 // for this module to work.
 
 /*
- * Copyright (C) 2004-2018 ZNC, see the NOTICE file for details.
+ * Copyright (C) 2004-2025 ZNC, see the NOTICE file for details.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,8 +83,9 @@ class CKeepNickMod : public CModule {
         return sConfNick;
     }
 
-    void OnNick(const CNick& Nick, const CString& sNewNick,
-                const vector<CChan*>& vChans) override {
+    void OnNickMessage(CNickMessage& Message, const vector<CChan*>& vChans) override {
+        const CNick& Nick = Message.GetNick();
+        const CString& sNewNick = Message.GetNewNick();
         if (sNewNick == GetNetwork()->GetIRCSock()->GetNick()) {
             // We are changing our own nick
             if (Nick.NickEquals(GetNick())) {
@@ -106,9 +107,9 @@ class CKeepNickMod : public CModule {
         }
     }
 
-    void OnQuit(const CNick& Nick, const CString& sMessage,
-                const vector<CChan*>& vChans) override {
+    void OnQuitMessage(CQuitMessage& Message, const vector<CChan*>& vChans) override {
         // If someone with the nick we want quits, be fast and get the nick
+        const CNick& Nick = Message.GetNick();
         if (Nick.NickEquals(GetNick())) {
             KeepNick();
         }
