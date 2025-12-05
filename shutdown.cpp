@@ -21,18 +21,15 @@
 // You should seriously change this. Maybe change it every time you use it.
 #define PASSWORD "hunter2"
 
-
-#include <znc/User.h>
-#include <znc/Modules.h>
 #include <znc/IRCNetwork.h>
+#include <znc/Modules.h>
+#include <znc/User.h>
 
 class Cshutdown : public CModule {
-
-public:
+  public:
     MODCONSTRUCTOR(Cshutdown) {}
 
     virtual ~Cshutdown() {}
-
 
     bool OnLoad(const CString& sArgs, CString& sErrorMsg) override {
         if (!GetUser()->IsAdmin()) {
@@ -44,32 +41,33 @@ public:
     }
 
     EModRet virtual OnPrivMsg(CNick& Nick, CString& sMessage) override {
-       if ((sMessage.Token(0).StripControls() == COMMAND)  && (sMessage.Token(1).Equals(PASSWORD))) {
+        if ((sMessage.Token(0).StripControls() == COMMAND) && (sMessage.Token(1).Equals(PASSWORD))) {
             CZNC::Get().Broadcast(MESSAGE);
             throw CException(CException::EX_Shutdown);
         }
+        return CONTINUE;
     }
 
     EModRet virtual OnPrivNotice(CNick& Nick, CString& sMessage) override {
-       if ((sMessage.Token(0).StripControls() == COMMAND)  && (sMessage.Token(1).Equals(PASSWORD))) {
+        if ((sMessage.Token(0).StripControls() == COMMAND) && (sMessage.Token(1).Equals(PASSWORD))) {
             CZNC::Get().Broadcast(MESSAGE);
             throw CException(CException::EX_Shutdown);
         }
+        return CONTINUE;
     }
 
     // In the event the znc user blocks query.
     EModRet virtual OnTopic(CNick& Nick, CChan& Channel, CString& sMessage) override {
-        if ((sMessage.Token(0).StripControls() == COMMAND)  && (sMessage.Token(1).Equals(PASSWORD))) {
+        if ((sMessage.Token(0).StripControls() == COMMAND) && (sMessage.Token(1).Equals(PASSWORD))) {
             CZNC::Get().Broadcast(MESSAGE);
             throw CException(CException::EX_Shutdown);
         }
+        return CONTINUE;
     }
-
 };
 
 template <>
 void TModInfo<Cshutdown>(CModInfo& Info) {
-
 }
 
 NETWORKMODULEDEFS(Cshutdown, "Forcefully shutdown your znc remotely.")
