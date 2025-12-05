@@ -8,9 +8,6 @@
 //        Figure out how to make it only execute once. It will trigger multiple times
 //        if someone joins multiple channels.
 
-
-
-
 /*
  * Copyright (C) 2004-2016 ZNC, see the NOTICE file for details.
  *
@@ -87,16 +84,15 @@ class CAutoAcceptUser {
     }
 
     CString ToString() const {
-          return m_sUsername + "\t" + GetHostmasks();
+        return m_sUsername + "\t" + GetHostmasks();
     }
 
     bool FromString(const CString& sLine) {
         m_sUsername = sLine.Token(0, false, "\t");
         // Trim because there was a bug which caused spaces in the hostname
         sLine.Token(1, false, "\t").Trim_n().Split(",", m_ssHostmasks);
-	return true;
+        return true;
     }
-
 
   private:
   protected:
@@ -108,15 +104,14 @@ class CAutoAcceptMod : public CModule {
   public:
     MODCONSTRUCTOR(CAutoAcceptMod) {
         AddHelpCommand();
-        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>( &CAutoAcceptMod::OnListUsersCommand), "", "List all users");
-        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>( &CAutoAcceptMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
-        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>( &CAutoAcceptMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
-        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>( &CAutoAcceptMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
-        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>( &CAutoAcceptMod::OnDelUserCommand), "<user>", "Removes a user");
+        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>(&CAutoAcceptMod::OnListUsersCommand), "", "List all users");
+        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>(&CAutoAcceptMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
+        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>(&CAutoAcceptMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
+        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>(&CAutoAcceptMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
+        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>(&CAutoAcceptMod::OnDelUserCommand), "<user>", "Removes a user");
     }
 
     bool OnLoad(const CString& sArgs, CString& sMessage) override {
-
         // Load the users
         for (MCString::iterator it = BeginNV(); it != EndNV(); ++it) {
             const CString& sLine = it->second;
@@ -141,43 +136,45 @@ class CAutoAcceptMod : public CModule {
     }
 
     EModRet OnNumericMessage(CNumericMessage& numeric) {
-             if (numeric.GetCode() == 718) {
-                 for (const auto& it : m_msUsers) {
-                     // Replace that space between "KindOne kindone@..." with a !.
-                     // This makes the module work like auto(op|voice).cpp.
-                     if (it.second->HostMatches(numeric.GetParam(1) + "!" + numeric.GetParam(2))) {
-                        // Inspircd + ratbox (efnet) do not automatically put users on the /accept list when you msg them.
-                        // Charybdis has done this since July 3rd / 4th 2010 with the two commits below.
-                        // 0770c9936ef1fc404f04fb4004adc8546abeba7a
-                        // f5455d2cd5e6dd5169ce8006167fffa8475bc493
-                        PutIRC("ACCEPT " + numeric.GetParam(1));
-                        PutIRC("PRIVMSG " + numeric.GetParam(1) + " :" MESSAGE);
-                        break;
-                     }
-                 }
-             }
-             // RPL_MONONLINE
-             // :irc.freenode.net 730 KindOne :EvilOne!KindOne@1.2.3.4
-             if (numeric.GetCode() == 730) {
-                 for (const auto& it : m_msUsers) {
-                     if (it.second->HostMatches(numeric.GetParam(1))) {
-                        // Borrowed from test/Nicktest.cpp
-                       CNick Nick1( numeric.GetParam(1) );
-                       PutIRC("ACCEPT " + Nick1.GetNick() );
-                       break;
-                     }
-                 }
-           }
-            return CONTINUE;
-     }
+        if (numeric.GetCode() == 718) {
+            for (const auto& it : m_msUsers) {
+                // Replace that space between "KindOne kindone@..." with a !.
+                // This makes the module work like auto(op|voice).cpp.
+                if (it.second->HostMatches(numeric.GetParam(1) + "!" + numeric.GetParam(2))) {
+                    // Inspircd + ratbox (efnet) do not automatically put users on the /accept list when you msg them.
+                    // Charybdis has done this since July 3rd / 4th 2010 with the two commits below.
+                    // 0770c9936ef1fc404f04fb4004adc8546abeba7a
+                    // f5455d2cd5e6dd5169ce8006167fffa8475bc493
+                    PutIRC("ACCEPT " + numeric.GetParam(1));
+                    PutIRC("PRIVMSG " + numeric.GetParam(1) + " :" MESSAGE);
+                    break;
+                }
+            }
+        }
+        // RPL_MONONLINE
+        // :irc.freenode.net 730 KindOne :EvilOne!KindOne@1.2.3.4
+        if (numeric.GetCode() == 730) {
+            for (const auto& it : m_msUsers) {
+                if (it.second->HostMatches(numeric.GetParam(1))) {
+                    // Borrowed from test/Nicktest.cpp
+                    CNick Nick1(numeric.GetParam(1));
+                    PutIRC("ACCEPT " + Nick1.GetNick());
+                    break;
+                }
+            }
+        }
+        return CONTINUE;
+    }
 
     // If someone switches nicks add the new one.
     void OnNick(const CNick& OldNick, const CString& sNewNick, const vector<CChan*>& vChans) override {
         // Don't /accept our new nick if we change.
-        if (sNewNick == m_pNetwork->GetIRCNick().GetNick()) { return; }
+        if (sNewNick == m_pNetwork->GetIRCNick().GetNick()) {
+            return;
+        }
         for (const auto& it : m_msUsers) {
             if (it.second->HostMatches(sNewNick + "!" + OldNick.GetIdent() + "@" + OldNick.GetHost())) {
-                PutIRC("ACCEPT " + sNewNick );
+                PutIRC("ACCEPT " + sNewNick);
                 break;
             }
         }
@@ -185,7 +182,7 @@ class CAutoAcceptMod : public CModule {
 
     void OnModCommand(const CString& sLine) override {
         CString sCommand = sLine.Token(0).AsUpper();
-            HandleCommand(sLine);
+        HandleCommand(sLine);
     }
 
     void OnAddUserCommand(const CString& sLine) {
@@ -195,7 +192,7 @@ class CAutoAcceptMod : public CModule {
         if (sHost.empty()) {
             PutModule("Usage: AddUser <user> <hostmask>[,<hostmasks>...]");
         } else {
-              CAutoAcceptUser* pUser = AddUser(sUser, sHost);
+            CAutoAcceptUser* pUser = AddUser(sUser, sHost);
 
             if (pUser) {
                 SetNV(sUser, pUser->ToString());
@@ -298,7 +295,7 @@ class CAutoAcceptMod : public CModule {
         return (it != m_msUsers.end()) ? it->second : nullptr;
     }
 
-	CAutoAcceptUser* FindUserByHost(const CString& sHostmask) {
+    CAutoAcceptUser* FindUserByHost(const CString& sHostmask) {
         for (const auto& it : m_msUsers) {
             CAutoAcceptUser* pUser = it.second;
             if (pUser->HostMatches(sHostmask)) {
@@ -323,7 +320,7 @@ class CAutoAcceptMod : public CModule {
         PutModule("User [" + sUser + "] removed");
     }
 
-      CAutoAcceptUser* AddUser(const CString& sUser, const CString& sHosts) {
+    CAutoAcceptUser* AddUser(const CString& sUser, const CString& sHosts) {
         if (m_msUsers.find(sUser) != m_msUsers.end()) {
             PutModule("That user already exists");
             return nullptr;
@@ -335,15 +332,13 @@ class CAutoAcceptMod : public CModule {
         return pUser;
     }
 
-
   private:
     map<CString, CAutoAcceptUser*> m_msUsers;
 };
 
-
 template <>
 void TModInfo<CAutoAcceptMod>(CModInfo& Info) {
-//    Info.SetWikiPage("AutoAccept");
+    //    Info.SetWikiPage("AutoAccept");
 }
 
 NETWORKMODULEDEFS(CAutoAcceptMod, "Auto /accept users in the list while umode +g.")
