@@ -1,4 +1,5 @@
 // Detect /zlines.
+// <*zlined> idiot (ident@example.com) from channels: #foobar, #xyz
 
 #include <znc/Chan.h>
 #include <znc/IRCNetwork.h>
