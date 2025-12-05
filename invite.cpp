@@ -4,7 +4,6 @@
 //    Add checks to see if people included the nick.
 //    Way to add/remove people without having to connect into znc.
 
-
 /*
  * Copyright (C) 2004-2016 ZNC, see the NOTICE file for details.
  *
@@ -80,15 +79,14 @@ class CinviteUser {
     }
 
     CString ToString() const {
-          return m_sUsername + "\t" + GetHostmasks();
+        return m_sUsername + "\t" + GetHostmasks();
     }
 
     bool FromString(const CString& sLine) {
         m_sUsername = sLine.Token(0, false, "\t");
         sLine.Token(1, false, "\t").Split(",", m_ssHostmasks);
-	return true;
+        return true;
     }
-
 
   private:
   protected:
@@ -100,15 +98,14 @@ class CinviteMod : public CModule {
   public:
     MODCONSTRUCTOR(CinviteMod) {
         AddHelpCommand();
-        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>( &CinviteMod::OnListUsersCommand), "", "List all users");
-        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>( &CinviteMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
-        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>( &CinviteMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
-        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>( &CinviteMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
-        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>( &CinviteMod::OnDelUserCommand), "<user>", "Removes a user");
+        AddCommand("ListUsers", static_cast<CModCommand::ModCmdFunc>(&CinviteMod::OnListUsersCommand), "", "List all users");
+        AddCommand("AddMasks", static_cast<CModCommand::ModCmdFunc>(&CinviteMod::OnAddMasksCommand), "<user> <mask>,[mask] ...", "Adds masks to a user");
+        AddCommand("DelMasks", static_cast<CModCommand::ModCmdFunc>(&CinviteMod::OnDelMasksCommand), "<user> <mask>,[mask] ...", "Removes masks from a user");
+        AddCommand("AddUser", static_cast<CModCommand::ModCmdFunc>(&CinviteMod::OnAddUserCommand), "<user> <hostmask>[,<hostmasks>...]", "Adds a user");
+        AddCommand("DelUser", static_cast<CModCommand::ModCmdFunc>(&CinviteMod::OnDelUserCommand), "<user>", "Removes a user");
     }
 
     bool OnLoad(const CString& sArgs, CString& sMessage) override {
-
         // Load the users
         for (MCString::iterator it = BeginNV(); it != EndNV(); ++it) {
             const CString& sLine = it->second;
@@ -132,22 +129,21 @@ class CinviteMod : public CModule {
         m_msUsers.clear();
     }
 
-	virtual EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) override {
-  		if ((sMessage.Token(0).StripControls() == "!invite") && (Channel.HasPerm(CChan::Op))) {
-
-			for (const auto& it : m_msUsers) {
-				if (it.second->HostMatches(Nick.GetHostMask())) {
-					PutIRC("INVITE " + sMessage.Token(1).StripControls() + " " + Channel.GetName());
-					break;
-				}
-			}
-		}
-		return CONTINUE;
-	}
+    virtual EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) override {
+        if ((sMessage.Token(0).StripControls() == "!invite") && (Channel.HasPerm(CChan::Op))) {
+            for (const auto& it : m_msUsers) {
+                if (it.second->HostMatches(Nick.GetHostMask())) {
+                    PutIRC("INVITE " + sMessage.Token(1).StripControls() + " " + Channel.GetName());
+                    break;
+                }
+            }
+        }
+        return CONTINUE;
+    }
 
     void OnModCommand(const CString& sLine) override {
         CString sCommand = sLine.Token(0).AsUpper();
-            HandleCommand(sLine);
+        HandleCommand(sLine);
     }
 
     void OnAddUserCommand(const CString& sLine) {
@@ -157,7 +153,7 @@ class CinviteMod : public CModule {
         if (sHost.empty()) {
             PutModule("Usage: AddUser <user> <hostmask>[,<hostmasks>...]");
         } else {
-              CinviteUser* pUser = AddUser(sUser, sHost);
+            CinviteUser* pUser = AddUser(sUser, sHost);
 
             if (pUser) {
                 SetNV(sUser, pUser->ToString());
@@ -260,7 +256,7 @@ class CinviteMod : public CModule {
         return (it != m_msUsers.end()) ? it->second : nullptr;
     }
 
-	CinviteUser* FindUserByHost(const CString& sHostmask) {
+    CinviteUser* FindUserByHost(const CString& sHostmask) {
         for (const auto& it : m_msUsers) {
             CinviteUser* pUser = it.second;
             if (pUser->HostMatches(sHostmask)) {
@@ -285,7 +281,7 @@ class CinviteMod : public CModule {
         PutModule("User [" + sUser + "] removed");
     }
 
-      CinviteUser* AddUser(const CString& sUser, const CString& sHosts) {
+    CinviteUser* AddUser(const CString& sUser, const CString& sHosts) {
         if (m_msUsers.find(sUser) != m_msUsers.end()) {
             PutModule("That user already exists");
             return nullptr;
@@ -297,15 +293,13 @@ class CinviteMod : public CModule {
         return pUser;
     }
 
-
   private:
     map<CString, CinviteUser*> m_msUsers;
 };
 
-
 template <>
 void TModInfo<CinviteMod>(CModInfo& Info) {
-//    Info.SetWikiPage("invite");
+    //    Info.SetWikiPage("invite");
 }
 
 NETWORKMODULEDEFS(CinviteMod, "INVITE people into channels.")
