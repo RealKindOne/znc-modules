@@ -27,19 +27,24 @@ class CStripTopicMod : public CModule {
         sTopic.StripControls();
         return CONTINUE;
     }
+
     EModRet OnNumericMessage(CNumericMessage& Message) override {
-        if (Message.GetCode() == 332) {
-            Message.StripControls();
+        // Strip topic from /list
+        if (Message.GetCode() == 322) {  // RPL_LIST
+            Message.SetParam(3, Message.GetParam(3).StripControls_n());
+        }
+        // Strip topic when joining channel
+        else if (Message.GetCode() == 332) {  // RPL_TOPIC
+            Message.SetParam(2, Message.GetParam(2).StripControls_n());
         }
         return CONTINUE;
     }
-
 };
 
 template <>
 void TModInfo<CStripTopicMod>(CModInfo& Info) {
-//    Info.SetWikiPage("StripTopic");
+    //    Info.SetWikiPage("StripTopic");
     Info.AddType(CModInfo::UserModule);
 }
 
-NETWORKMODULEDEFS(CStripTopicMod, "Strips control codes (Colors, Bold, ..) from topic.")
+NETWORKMODULEDEFS(CStripTopicMod, "Strips control codes (Colors, Bold, ..) from /topic.")
