@@ -1,6 +1,12 @@
-// lowecasechan.cpp
+// lowercasechan.cpp
 
 // This module lowercases only the channel names to your IRC client.
+
+// Directions:
+//    1. Load module
+//    2. /detach #Example ; /attach #example
+//       OR
+//       Reconnect your IRC client to ZNC
 
 // Note: This module is set as a per network only module.
 //       If you just want to work on ALL your networks just change the
