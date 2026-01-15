@@ -6,6 +6,11 @@ I have altered some of the default znc modules.
 
     autovoice
         - Support multiple hostmask like autoop.
+
+    cert
+        - Print certificate in SHA1, SHA256, and SHA512.
+        - Allow printing certs with and without :
+
     keepnick
         - Support MONITOR
             - Read the notes at the top of the module source code.
