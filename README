@@ -34,7 +34,8 @@ I have altered some of the default znc modules.
 		- No support for extended-join.
 
     sasl
-        - Support user.pem file in sasl folder. There is no interface for this.
+        - Support user.pem file in sasl folder for SASL EXTERNAL.
+        - There is no interface for this. Just put the file in the folder.
 
     send_raw
         - Allow non-admins to use send_raw only on themselves
@@ -97,38 +98,3 @@ Custom modules
 
     zlined
         - Put Z-Line quits in a single window
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
