@@ -14,6 +14,10 @@ I have altered some of the default znc modules.
         - Print certificate in SHA1, SHA256, and SHA512.
         - Allow printing certs with and without :
 
+    fail2ban
+        - Add columns for ID, Username, First Seen, Last Seen, Expires In
+        - Added Unban <ID>
+
     keepnick
         - Support MONITOR
             - Read the notes at the top of the module source code.
