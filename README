@@ -12,3 +12,7 @@ I have altered some of the default znc modules.
     log
         - Uses older #channel_YYYYMMDD.log format.
 		- No support for extended-join.
+
+    watch
+        - Support exempt.
+            - WARNING - Make a backup of your .registry file.
