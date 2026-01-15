@@ -4,6 +4,9 @@ These are built with 1.9.x.
 
 I have altered some of the default znc modules.
 
+    autoattach
+        - Add SWAP command
+
     autovoice
         - Support multiple hostmask like autoop.
 
