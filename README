@@ -1,6 +1,6 @@
 My collection of znc modules.
 
-These are built with 1.9.x.
+These are built with 1.10.x.
 
 I have altered some of the default znc modules.
 
@@ -43,3 +43,92 @@ I have altered some of the default znc modules.
     watch
         - Support exempt.
             - WARNING - Make a backup of your .registry file.
+
+
+Custom modules
+
+    antiidle
+        - Resurrected from git. Uses a channel you need to add
+
+    autoaccept
+        - Automatically /accept known people that message you
+
+    channelurl
+        - Hide channelurl numeric from clients
+
+    disconnectonban
+        - Disconnect you from the network when you are network banned
+
+    glined
+        - Put G-Line quits in a single window
+
+    invite
+        - Allow people to send channel invites
+
+    klined
+        - Put K-Line quits in a single window
+
+    lowercasechan
+        - Lowercase the channel name to your IRC client for all channel events
+
+    monitor
+        - Use MONITOR
+
+    notice
+        - Convert NOTICE from people on a list into PRIVMSG
+
+    pretendclient
+        - Make znc disconnect/connect from irc networks like a real client
+
+    rawlog
+        - Raw log
+
+    roulette
+        - Game of roulette
+
+    shutdown
+        - Shutdown your ZNC remotely. Does not save config. Run at own risk.
+
+    stripinput
+        - Strip clientside input
+
+    striptopic
+        - Strip /topic message
+
+    zlined
+        - Put Z-Line quits in a single window
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
