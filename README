@@ -33,6 +33,9 @@ I have altered some of the default znc modules.
         - Uses older #channel_YYYYMMDD.log format.
 		- No support for extended-join.
 
+    sasl
+        - Support user.pem file in sasl folder. There is no interface for this.
+
     send_raw
         - Allow non-admins to use send_raw only on themselves
         - Allow admins to send fake data to ZNC
