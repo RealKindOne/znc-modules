@@ -75,6 +75,9 @@ Custom modules
     monitor
         - Use MONITOR
 
+    myinsanity
+        - Counts users, channels, and networks you are on
+
     notice
         - Convert NOTICE from people on a list into PRIVMSG
 
