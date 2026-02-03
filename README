@@ -81,6 +81,9 @@ Custom modules
     notice
         - Convert NOTICE from people on a list into PRIVMSG
 
+    partyline
+        - Resurrected from git.
+
     pretendclient
         - Make znc disconnect/connect from irc networks like a real client
 
