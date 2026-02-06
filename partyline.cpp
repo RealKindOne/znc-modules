@@ -1,5 +1,12 @@
+// Modified partyline.cpp
+//
+// Original partyline would put the partyline channels into all your networks.
+// This modified version lets you pick use one (or more) networks you want to use.
+// The /msg ?NICK ... is still sent to all network connections... I'll work on
+//    that later... maybe.
+
 /*
- * Copyright (C) 2004-2018 ZNC, see the NOTICE file for details.
+ * Copyright (C) 2004-2026 ZNC, see the NOTICE file for details.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +21,12 @@
  * limitations under the License.
  */
 
-#include <znc/User.h>
 #include <znc/IRCNetwork.h>
+#include <znc/User.h>
 
+using std::map;
 using std::set;
 using std::vector;
-using std::map;
 
 // If you change these and it breaks, you get to keep the pieces
 #define CHAN_PREFIX_1 "~"
@@ -29,6 +36,16 @@ using std::map;
 #define NICK_PREFIX CString("?")
 #define NICK_PREFIX_C '?'
 
+struct SPartylineUser {
+    CString sUsername;
+    CIRCNetwork* pNetwork;
+
+    bool operator<(const SPartylineUser& other) const {
+        if (sUsername != other.sUsername) return sUsername < other.sUsername;
+        return pNetwork < other.pNetwork;
+    }
+};
+
 class CPartylineChannel {
   public:
     CPartylineChannel(const CString& sName) { m_sName = sName.AsLower(); }
@@ -36,21 +53,38 @@ class CPartylineChannel {
 
     const CString& GetTopic() const { return m_sTopic; }
     const CString& GetName() const { return m_sName; }
-    const set<CString>& GetNicks() const { return m_ssNicks; }
+
+    const set<SPartylineUser>& GetUsers() const { return m_ssUsers; }
 
     void SetTopic(const CString& s) { m_sTopic = s; }
 
-    void AddNick(const CString& s) { m_ssNicks.insert(s); }
-    void DelNick(const CString& s) { m_ssNicks.erase(s); }
+    void AddUser(const CString& sUsername, CIRCNetwork* pNetwork) {
+        m_ssUsers.insert({sUsername, pNetwork});
+    }
 
-    bool IsInChannel(const CString& s) {
-        return m_ssNicks.find(s) != m_ssNicks.end();
+    void DelUser(const CString& sUsername, CIRCNetwork* pNetwork) {
+        m_ssUsers.erase({sUsername, pNetwork});
+    }
+
+    bool IsInChannel(const CString& sUsername, CIRCNetwork* pNetwork) {
+        return m_ssUsers.find({sUsername, pNetwork}) != m_ssUsers.end();
+    }
+
+    // Helper to get all networks for a user
+    set<CIRCNetwork*> GetUserNetworks(const CString& sUsername) {
+        set<CIRCNetwork*> networks;
+        for (const auto& user : m_ssUsers) {
+            if (user.sUsername == sUsername) {
+                networks.insert(user.pNetwork);
+            }
+        }
+        return networks;
     }
 
   protected:
     CString m_sTopic;
     CString m_sName;
-    set<CString> m_ssNicks;
+    set<SPartylineUser> m_ssUsers;
 };
 
 class CPartylineMod : public CModule {
@@ -71,7 +105,7 @@ class CPartylineMod : public CModule {
             Table.AddRow();
 
             Table.SetCell(t_s("Channel"), (*a)->GetName());
-            Table.SetCell(t_s("Users"), CString((*a)->GetNicks().size()));
+            Table.SetCell(t_s("Users"), CString((*a)->GetUsers().size()));
         }
 
         PutModule(Table);
@@ -87,20 +121,25 @@ class CPartylineMod : public CModule {
         // Kick all clients who are in partyline channels
         for (set<CPartylineChannel*>::iterator it = m_ssChannels.begin();
              it != m_ssChannels.end(); ++it) {
-            set<CString> ssNicks = (*it)->GetNicks();
+            const set<SPartylineUser>& ssUsers = (*it)->GetUsers();
 
-            for (set<CString>::const_iterator it2 = ssNicks.begin();
-                 it2 != ssNicks.end(); ++it2) {
-                CUser* pUser = CZNC::Get().FindUser(*it2);
+            for (set<SPartylineUser>::const_iterator it2 = ssUsers.begin();
+                 it2 != ssUsers.end(); ++it2) {
+                CUser* pUser = CZNC::Get().FindUser(it2->sUsername);
+                if (!pUser) continue;
+
                 vector<CClient*> vClients = pUser->GetAllClients();
 
                 for (vector<CClient*>::const_iterator it3 = vClients.begin();
                      it3 != vClients.end(); ++it3) {
                     CClient* pClient = *it3;
-                    pClient->PutClient(":*" + GetModName() +
-                                       "!znc@znc.in KICK " + (*it)->GetName() +
-                                       " " + pClient->GetNick() + " :" +
-                                       GetModName() + " unloaded");
+                    // Only kick clients on the network where the user joined the channel
+                    if (pClient->GetNetwork() == it2->pNetwork) {
+                        pClient->PutClient(":*" + GetModName() +
+                                           "!znc@znc.in KICK " + (*it)->GetName() +
+                                           " " + pClient->GetNick() + " :" +
+                                           GetModName() + " unloaded");
+                    }
                 }
             }
         }
@@ -172,7 +211,8 @@ class CPartylineMod : public CModule {
             if (sAction == "topic") {
                 pChannel = FindChannel(sKey);
                 if (pChannel && !(it->second).empty()) {
-                    PutChan(pChannel->GetNicks(), ":irc.znc.in TOPIC " +
+
+                    PutChan(pChannel->GetUsers(), ":irc.znc.in TOPIC " +
                                                       pChannel->GetName() +
                                                       " :" + it->second);
                     pChannel->SetTopic(it->second);
@@ -198,9 +238,13 @@ class CPartylineMod : public CModule {
             // RemoveUser() might delete channels, so make sure our
             // iterator doesn't break.
             ++it;
-            RemoveUser(&User, pChan, "KICK", "User deleted", true);
-        }
 
+            // Remove user from all networks they're in this channel
+            set<CIRCNetwork*> networks = pChan->GetUserNetworks(User.GetUserName());
+            for (CIRCNetwork* pNetwork : networks) {
+                RemoveUser(&User, pNetwork, pChan, "KICK", "User deleted", true);
+            }
+        }
         return CONTINUE;
     }
 
@@ -232,68 +276,49 @@ class CPartylineMod : public CModule {
                                CHAN_PREFIX_1 " :are supported by this server.");
         }
 
-        // Make sure this user is in the default channels
-        for (set<CString>::iterator a = m_ssDefaultChans.begin();
-             a != m_ssDefaultChans.end(); ++a) {
-            CPartylineChannel* pChannel = GetChannel(*a);
-            const CString& sNick = pUser->GetUserName();
+        // Only join default channels on this specific network
+        for (const CString& sChan : m_ssDefaultChans) {
+            CPartylineChannel* pChannel = GetChannel(sChan);
 
-            if (pChannel->IsInChannel(sNick)) continue;
-
-            CString sHost = pUser->GetBindHost();
-            const set<CString>& ssNicks = pChannel->GetNicks();
-
-            if (sHost.empty()) {
-                sHost = "znc.in";
+            if (!pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
+                JoinUser(pUser, pNetwork, pChannel);
             }
-            PutChan(ssNicks,
-                    ":" + NICK_PREFIX + sNick + "!" + pUser->GetIdent() + "@" +
-                        sHost + " JOIN " + *a,
-                    false);
-            pChannel->AddNick(sNick);
         }
 
+        // Show existing channels on this network
         CString sNickMask = pClient->GetNickMask();
+        for (CPartylineChannel* pChannel : m_ssChannels) {
+            if (pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
+                pClient->PutClient(":" + sNickMask + " JOIN " + pChannel->GetName());
 
-        for (set<CPartylineChannel*>::iterator it = m_ssChannels.begin();
-             it != m_ssChannels.end(); ++it) {
-            const set<CString>& ssNicks = (*it)->GetNicks();
-
-            if ((*it)->IsInChannel(pUser->GetUserName())) {
-                pClient->PutClient(":" + sNickMask + " JOIN " +
-                                   (*it)->GetName());
-
-                if (!(*it)->GetTopic().empty()) {
+                if (!pChannel->GetTopic().empty()) {
                     pClient->PutClient(":" + GetIRCServer(pNetwork) + " 332 " +
                                        pClient->GetNickMask() + " " +
-                                       (*it)->GetName() + " :" +
-                                       (*it)->GetTopic());
+                                       pChannel->GetName() + " :" +
+                                       pChannel->GetTopic());
                 }
 
-                SendNickList(pUser, pNetwork, ssNicks, (*it)->GetName());
-                PutChan(ssNicks, ":*" + GetModName() + "!znc@znc.in MODE " +
-                                     (*it)->GetName() + " +" +
-                                     CString(pUser->IsAdmin() ? "o" : "v") +
-                                     " " + NICK_PREFIX + pUser->GetUserName(),
-                        false);
+                SendNickList(pUser, pNetwork, pChannel->GetUsers(), pChannel->GetName());
             }
         }
     }
 
     void OnClientDisconnect() override {
         CUser* pUser = GetUser();
+        CIRCNetwork* pNetwork = GetNetwork();
+
         if (!pUser->IsUserAttached() && !pUser->IsBeingDeleted()) {
             for (set<CPartylineChannel*>::iterator it = m_ssChannels.begin();
                  it != m_ssChannels.end(); ++it) {
-                const set<CString>& ssNicks = (*it)->GetNicks();
+                const set<SPartylineUser>& ssUsers = (*it)->GetUsers();
 
-                if (ssNicks.find(pUser->GetUserName()) != ssNicks.end()) {
-                    PutChan(ssNicks,
+                if (ssUsers.find({pUser->GetUserName(), pNetwork}) != ssUsers.end()) {
+                    PutChan(ssUsers,
                             ":*" + GetModName() + "!znc@znc.in MODE " +
                                 (*it)->GetName() + " -ov " + NICK_PREFIX +
                                 pUser->GetUserName() + " " + NICK_PREFIX +
                                 pUser->GetUserName(),
-                            false);
+                            false, true, pUser, nullptr, pNetwork);
                 }
             }
         }
@@ -313,15 +338,14 @@ class CPartylineMod : public CModule {
 
             CUser* pUser = GetUser();
             CClient* pClient = GetClient();
+            CIRCNetwork* pNetwork = GetNetwork();
             CPartylineChannel* pChannel = FindChannel(sChannel);
 
-            if (pChannel && pChannel->IsInChannel(pUser->GetUserName())) {
-                const set<CString>& ssNicks = pChannel->GetNicks();
+            if (pChannel && pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
+                const set<SPartylineUser>& ssUsers = pChannel->GetUsers();
                 if (!sTopic.empty()) {
                     if (pUser->IsAdmin()) {
-                        PutChan(ssNicks, ":" + pClient->GetNickMask() +
-                                             " TOPIC " + sChannel + " :" +
-                                             sTopic);
+                        PutChan(ssUsers, ":" + pClient->GetNickMask() + " TOPIC " + sChannel + " :" + sTopic, true, false, pUser, nullptr, pNetwork);
                         pChannel->SetTopic(sTopic);
                         SaveTopic(pChannel);
                     } else {
@@ -363,76 +387,70 @@ class CPartylineMod : public CModule {
         }
 
         CPartylineChannel* pChannel = FindChannel(sChannel);
+        CIRCNetwork* pNetwork = GetNetwork();
 
-        PartUser(GetUser(), pChannel);
+        PartUser(GetUser(), pNetwork, pChannel, sMessage);
 
         return HALT;
     }
 
-    void PartUser(CUser* pUser, CPartylineChannel* pChannel,
+    void PartUser(CUser* pUser, CIRCNetwork* pNetwork, CPartylineChannel* pChannel,
                   const CString& sMessage = "") {
-        RemoveUser(pUser, pChannel, "PART", sMessage);
+        RemoveUser(pUser, pNetwork, pChannel, "PART", sMessage);
     }
 
-    void RemoveUser(CUser* pUser, CPartylineChannel* pChannel,
+    void RemoveUser(CUser* pUser, CIRCNetwork* pNetwork, CPartylineChannel* pChannel,
                     const CString& sCommand, const CString& sMessage = "",
                     bool bNickAsTarget = false) {
-        if (!pChannel || !pChannel->IsInChannel(pUser->GetUserName())) {
+        if (!pChannel || !pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
             return;
         }
 
-        vector<CClient*> vClients = pUser->GetAllClients();
+        // Remove user from specific network
+        pChannel->DelUser(pUser->GetUserName(), pNetwork);
 
+        // Only send PART to clients on this network
         CString sCmd = " " + sCommand + " ";
-        CString sMsg = sMessage;
-        if (!sMsg.empty()) sMsg = " :" + sMsg;
+        CString sMsg = sMessage.empty() ? "" : " :" + sMessage;
 
-        pChannel->DelNick(pUser->GetUserName());
+        for (CClient* pClient : pUser->GetAllClients()) {
+            if (pClient->GetNetwork() == pNetwork) {
+                if (bNickAsTarget) {
+                    pClient->PutClient(":" + pClient->GetNickMask() + sCmd +
+                                       pChannel->GetName() + " " +
+                                       pClient->GetNick() + sMsg);
+                } else {
+                    pClient->PutClient(":" + pClient->GetNickMask() + sCmd +
+                                       pChannel->GetName() + sMsg);
+                }
+            }
+        }
 
-        const set<CString>& ssNicks = pChannel->GetNicks();
+        // Notify others on the same network
         CString sHost = pUser->GetBindHost();
-
         if (sHost.empty()) {
             sHost = "znc.in";
         }
 
+        CString sPartMsg = ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
+                           pUser->GetIdent() + "@" + sHost + sCmd +
+                           pChannel->GetName();
+
         if (bNickAsTarget) {
-            for (vector<CClient*>::const_iterator it = vClients.begin();
-                 it != vClients.end(); ++it) {
-                CClient* pClient = *it;
-
-                pClient->PutClient(":" + pClient->GetNickMask() + sCmd +
-                                   pChannel->GetName() + " " +
-                                   pClient->GetNick() + sMsg);
-            }
-
-            PutChan(ssNicks, ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
-                                 pUser->GetIdent() + "@" + sHost + sCmd +
-                                 pChannel->GetName() + " " + NICK_PREFIX +
-                                 pUser->GetUserName() + sMsg,
-                    false, true, pUser);
-        } else {
-            for (vector<CClient*>::const_iterator it = vClients.begin();
-                 it != vClients.end(); ++it) {
-                CClient* pClient = *it;
-
-                pClient->PutClient(":" + pClient->GetNickMask() + sCmd +
-                                   pChannel->GetName() + sMsg);
-            }
-
-            PutChan(ssNicks, ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
-                                 pUser->GetIdent() + "@" + sHost + sCmd +
-                                 pChannel->GetName() + sMsg,
-                    false, true, pUser);
+            sPartMsg += " " + NICK_PREFIX + pUser->GetUserName();
         }
+        sPartMsg += sMsg;
 
+        PutChan(pChannel->GetUsers(), sPartMsg, false, true, pUser, nullptr, pNetwork);
+
+        // Rejoin if default channel and not being deleted
         if (!pUser->IsBeingDeleted() &&
-            m_ssDefaultChans.find(pChannel->GetName()) !=
-                m_ssDefaultChans.end()) {
-            JoinUser(pUser, pChannel);
+            m_ssDefaultChans.find(pChannel->GetName()) != m_ssDefaultChans.end()) {
+            JoinUser(pUser, pNetwork, pChannel);
         }
 
-        if (ssNicks.empty()) {
+        // Delete channel if empty across all networks
+        if (pChannel->GetUsers().empty()) {
             delete pChannel;
             m_ssChannels.erase(pChannel);
         }
@@ -452,66 +470,62 @@ class CPartylineMod : public CModule {
 
         sChannel = sChannel.Left(32);
         CPartylineChannel* pChannel = GetChannel(sChannel);
+        CIRCNetwork* pNetwork = GetNetwork();
 
-        JoinUser(GetUser(), pChannel);
+        JoinUser(GetUser(), pNetwork, pChannel);
 
         return HALT;
     }
 
-    void JoinUser(CUser* pUser, CPartylineChannel* pChannel) {
-        if (pChannel && !pChannel->IsInChannel(pUser->GetUserName())) {
-            vector<CClient*> vClients = pUser->GetAllClients();
+    void JoinUser(CUser* pUser, CIRCNetwork* pNetwork, CPartylineChannel* pChannel) {
+        if (!pChannel || pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
+            return;
+        }
 
-            const set<CString>& ssNicks = pChannel->GetNicks();
-            const CString& sNick = pUser->GetUserName();
-            pChannel->AddNick(sNick);
+        // Add user with specific network
+        pChannel->AddUser(pUser->GetUserName(), pNetwork);
 
-            CString sHost = pUser->GetBindHost();
-
-            if (sHost.empty()) {
-                sHost = "znc.in";
-            }
-
-            for (vector<CClient*>::const_iterator it = vClients.begin();
-                 it != vClients.end(); ++it) {
-                CClient* pClient = *it;
+        // Only send JOIN to clients on this network
+        for (CClient* pClient : pUser->GetAllClients()) {
+            if (pClient->GetNetwork() == pNetwork) {
                 pClient->PutClient(":" + pClient->GetNickMask() + " JOIN " +
                                    pChannel->GetName());
             }
+        }
 
-            PutChan(ssNicks,
-                    ":" + NICK_PREFIX + sNick + "!" + pUser->GetIdent() + "@" +
-                        sHost + " JOIN " + pChannel->GetName(),
-                    false, true, pUser);
+        // Notify other users on the same network
+        CString sHost = pUser->GetBindHost();
+        if (sHost.empty()) {
+            sHost = "znc.in";
+        }
 
-            if (!pChannel->GetTopic().empty()) {
-                for (vector<CClient*>::const_iterator it = vClients.begin();
-                     it != vClients.end(); ++it) {
-                    CClient* pClient = *it;
-                    pClient->PutClient(
-                        ":" + GetIRCServer(pClient->GetNetwork()) + " 332 " +
-                        pClient->GetNickMask() + " " + pChannel->GetName() +
-                        " :" + pChannel->GetTopic());
+        CString sJoinMsg = ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
+                           pUser->GetIdent() + "@" + sHost + " JOIN " +
+                           pChannel->GetName();
+
+        PutChan(pChannel->GetUsers(), sJoinMsg, false, true, pUser, nullptr, pNetwork);
+
+        // Send topic and names list only to clients on this network
+        if (!pChannel->GetTopic().empty()) {
+            for (CClient* pClient : pUser->GetAllClients()) {
+                if (pClient->GetNetwork() == pNetwork) {
+                    pClient->PutClient(":" + GetIRCServer(pNetwork) + " 332 " +
+                                       pClient->GetNickMask() + " " +
+                                       pChannel->GetName() + " :" +
+                                       pChannel->GetTopic());
                 }
             }
-
-            SendNickList(pUser, nullptr, ssNicks, pChannel->GetName());
-
-            /* Tell the other clients we have op or voice, the current user's
-             * clients already know from NAMES list */
-
-            if (pUser->IsAdmin()) {
-                PutChan(ssNicks, ":*" + GetModName() + "!znc@znc.in MODE " +
-                                     pChannel->GetName() + " +o " +
-                                     NICK_PREFIX + pUser->GetUserName(),
-                        false, false, pUser);
-            }
-
-            PutChan(ssNicks, ":*" + GetModName() + "!znc@znc.in MODE " +
-                                 pChannel->GetName() + " +v " + NICK_PREFIX +
-                                 pUser->GetUserName(),
-                    false, false, pUser);
         }
+
+        SendNickList(pUser, pNetwork, pChannel->GetUsers(), pChannel->GetName());
+
+        // Set modes only on this network
+        if (pUser->IsAdmin()) {
+            PutChan(pChannel->GetUsers(), ":*" + GetModName() + "!znc@znc.in MODE " + pChannel->GetName() + " +o " + NICK_PREFIX + pUser->GetUserName(),
+                    false, false, pUser, nullptr, pNetwork);
+        }
+        PutChan(pChannel->GetUsers(), ":*" + GetModName() + "!znc@znc.in MODE " + pChannel->GetName() + " +v " + NICK_PREFIX + pUser->GetUserName(),
+                false, false, pUser, nullptr, pNetwork);
     }
 
     EModRet HandleMessage(const CString& sCmd, const CString& sTarget,
@@ -521,7 +535,6 @@ class CPartylineMod : public CModule {
         }
 
         char cPrefix = sTarget[0];
-
         if (cPrefix != CHAN_PREFIX_1C && cPrefix != NICK_PREFIX_C) {
             return CONTINUE;
         }
@@ -530,50 +543,56 @@ class CPartylineMod : public CModule {
         CClient* pClient = GetClient();
         CIRCNetwork* pNetwork = GetNetwork();
         CString sHost = pUser->GetBindHost();
-
         if (sHost.empty()) {
             sHost = "znc.in";
         }
 
         if (cPrefix == CHAN_PREFIX_1C) {
-            if (FindChannel(sTarget) == nullptr) {
+            CPartylineChannel* pChannel = FindChannel(sTarget);
+            if (!pChannel) {
                 pClient->PutClient(":" + GetIRCServer(pNetwork) + " 401 " +
                                    pClient->GetNick() + " " + sTarget +
                                    " :No such channel");
                 return HALT;
             }
 
-            PutChan(sTarget, ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
-                                 pUser->GetIdent() + "@" + sHost + " " + sCmd +
-                                 " " + sTarget + " :" + sMessage,
-                    true, false);
+            // Check if user is in channel on this network
+            if (!pChannel->IsInChannel(pUser->GetUserName(), pNetwork)) {
+                pClient->PutClient(":" + GetIRCServer(pNetwork) + " 442 " +
+                                   pClient->GetNick() + " " + sTarget +
+                                   " :You're not on that channel");
+                return HALT;
+            }
+
+            CString sMsg = ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
+                           pUser->GetIdent() + "@" + sHost + " " + sCmd +
+                           " " + sTarget + " :" + sMessage;
+
+            // Send to all users in channel (cross-network)
+            PutChan(pChannel->GetUsers(), sMsg, true, false, pUser, nullptr, pNetwork);
         } else {
+            // Private message handling remains similar
             CString sNick = sTarget.LeftChomp_n(1);
             CUser* pTargetUser = CZNC::Get().FindUser(sNick);
 
             if (pTargetUser) {
                 vector<CClient*> vClients = pTargetUser->GetAllClients();
-
                 if (vClients.empty()) {
                     pClient->PutClient(":" + GetIRCServer(pNetwork) + " 401 " +
                                        pClient->GetNick() + " " + sTarget +
-                                       " :User is not attached: " + sNick + "");
+                                       " :User is not attached: " + sNick);
                     return HALT;
                 }
 
-                for (vector<CClient*>::const_iterator it = vClients.begin();
-                     it != vClients.end(); ++it) {
-                    CClient* pTarget = *it;
-
-                    pTarget->PutClient(
-                        ":" + NICK_PREFIX + pUser->GetUserName() + "!" +
-                        pUser->GetIdent() + "@" + sHost + " " + sCmd + " " +
-                        pTarget->GetNick() + " :" + sMessage);
+                for (CClient* pTarget : vClients) {
+                    pTarget->PutClient(":" + NICK_PREFIX + pUser->GetUserName() + "!" +
+                                       pUser->GetIdent() + "@" + sHost + " " + sCmd +
+                                       " " + pTarget->GetNick() + " :" + sMessage);
                 }
             } else {
                 pClient->PutClient(":" + GetIRCServer(pNetwork) + " 401 " +
                                    pClient->GetNick() + " " + sTarget +
-                                   " :No such znc user: " + sNick + "");
+                                   " :No such znc user: " + sNick);
             }
         }
 
@@ -612,34 +631,45 @@ class CPartylineMod : public CModule {
         CPartylineChannel* pChannel = FindChannel(sChan);
 
         if (pChannel != nullptr) {
-            PutChan(pChannel->GetNicks(), sLine, bIncludeCurUser,
-                    bIncludeClient, pUser, pClient);
+            PutChan(pChannel->GetUsers(), sLine, bIncludeCurUser,
+                    bIncludeClient, pUser, pClient, GetNetwork());
             return true;
         }
 
         return false;
     }
 
-    void PutChan(const set<CString>& ssNicks, const CString& sLine,
+    void PutChan(const set<SPartylineUser>& ssUsers, const CString& sLine,
                  bool bIncludeCurUser = true, bool bIncludeClient = true,
-                 CUser* pUser = nullptr, CClient* pClient = nullptr) {
+                 CUser* pUser = nullptr, CClient* pClient = nullptr,
+                 CIRCNetwork* pSenderNetwork = nullptr) {
         const map<CString, CUser*>& msUsers = CZNC::Get().GetUserMap();
 
         if (!pUser) pUser = GetUser();
         if (!pClient) pClient = GetClient();
 
-        for (map<CString, CUser*>::const_iterator it = msUsers.begin();
-             it != msUsers.end(); ++it) {
-            if (ssNicks.find(it->first) != ssNicks.end()) {
-                if (it->second == pUser) {
-                    if (bIncludeCurUser) {
-                        it->second->PutAllUser(
-                            sLine, nullptr,
-                            (bIncludeClient ? nullptr : pClient));
-                    }
-                } else {
-                    it->second->PutAllUser(sLine);
+        for (const SPartylineUser& partylineUser : ssUsers) {
+            CUser* pTargetUser = CZNC::Get().FindUser(partylineUser.sUsername);
+            if (!pTargetUser) continue;
+
+            // Check if this is the sender
+            bool isSender = (pTargetUser == pUser);
+
+            if (isSender && !bIncludeCurUser) {
+                continue;
+            }
+
+            // Get all clients for this user
+            vector<CClient*> vClients = pTargetUser->GetAllClients();
+
+            for (CClient* pTargetClient : vClients) {
+                // For the sender, check if we should exclude this specific client
+                if (isSender && !bIncludeClient && pTargetClient == pClient) {
+                    continue;
                 }
+
+                // Send the message to this client
+                pTargetClient->PutClient(sLine);
             }
         }
     }
@@ -654,12 +684,11 @@ class CPartylineMod : public CModule {
     }
 
     void SendNickList(CUser* pUser, CIRCNetwork* pNetwork,
-                      const set<CString>& ssNicks, const CString& sChan) {
+                      const set<SPartylineUser>& ssUsers, const CString& sChan) {
         CString sNickList;
 
-        for (set<CString>::const_iterator it = ssNicks.begin();
-             it != ssNicks.end(); ++it) {
-            CUser* pChanUser = CZNC::Get().FindUser(*it);
+        for (const SPartylineUser& partylineUser : ssUsers) {
+            CUser* pChanUser = CZNC::Get().FindUser(partylineUser.sUsername);
 
             if (pChanUser == pUser) {
                 continue;
@@ -669,7 +698,7 @@ class CPartylineMod : public CModule {
                 sNickList += (pChanUser->IsAdmin()) ? "@" : "+";
             }
 
-            sNickList += NICK_PREFIX + (*it) + " ";
+            sNickList += NICK_PREFIX + partylineUser.sUsername + " ";
 
             if (sNickList.size() >= 500) {
                 PutUserIRCNick(pUser, ":" + GetIRCServer(pNetwork) + " 353 ",

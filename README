@@ -83,6 +83,8 @@ Custom modules
 
     partyline
         - Resurrected from git.
+        - Multi-network support. Join partyline channel on only one network instead of all
+        - PRIVMSG's via /msg ?NICK are still sent to all networks
 
     pretendclient
         - Make znc disconnect/connect from irc networks like a real client
