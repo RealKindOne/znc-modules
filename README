@@ -60,6 +60,9 @@ Custom modules
     disconnectonban
         - Disconnect you from the network when you are network banned
 
+    forcehostusernames
+        - Force ZNC to send "CAP REQ :userhost-in-names" that is hidden
+
     glined
         - Put G-Line quits in a single window
 
