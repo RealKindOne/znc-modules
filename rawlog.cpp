@@ -44,6 +44,7 @@ class CRawLogMod : public CModule {
     virtual void OnIRCConnected();
     virtual void OnIRCDisconnected();
     virtual EModRet OnRaw(CString& sLine);
+    virtual EModRet OnSendToIRC(CString& sLine);
 };
 
 void CRawLogMod::PutLog(const CString& sLine) {
@@ -88,7 +89,12 @@ void CRawLogMod::OnIRCDisconnected() {
 }
 
 CModule::EModRet CRawLogMod::OnRaw(CString& sMessage) {
-    PutLog(sMessage);
+    PutLog("<- " + sMessage);
+    return CONTINUE;
+}
+
+CModule::EModRet CRawLogMod::OnSendToIRC(CString& sLine) {
+    PutLog("-> " + sLine);
     return CONTINUE;
 }
 
