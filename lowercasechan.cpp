@@ -1,6 +1,7 @@
 // lowercasechan.cpp
 
-// This module lowercases only the channel names to your IRC client.
+// This module lowercases channel names between ZNC and your client.
+// Also lowercases channel names in /whois output.
 
 // Directions:
 //    1. Load module
@@ -118,6 +119,37 @@ class CLowercaseChanMod : public CModule {
             case 366:  // RPL_ENDOFNAMES
                 TransformChannelParam(Message, 1);
                 break;
+            case 319: {  // RPL_WHOISCHANNELS
+                if (Message.GetParams().size() > 2) {
+                    CString sChannels = Message.GetParam(2);
+                    VCString vsChannels;
+                    sChannels.Split(" ", vsChannels, false);
+
+                    for (CString& sChan : vsChannels) {
+                        // Find where the actual channel name starts
+                        size_t uPos = 0;
+                        while (uPos < sChan.length() &&
+                               (sChan[uPos] == '@' ||
+                                sChan[uPos] == '+' ||
+                                sChan[uPos] == '%' ||
+                                sChan[uPos] == '~' ||
+                                sChan[uPos] == '!' ||
+                                sChan[uPos] == '&')) {
+                            uPos++;
+                        }
+
+                        if (uPos < sChan.length()) {
+                            CString sPrefix = sChan.Left(uPos);
+                            CString sChannel = sChan.substr(uPos);
+                            if (IsChannel(sChannel)) {
+                                sChan = sPrefix + sChannel.AsLower();
+                            }
+                        }
+                    }
+                    Message.SetParam(2, CString(" ").Join(vsChannels.begin(), vsChannels.end()));
+                }
+                break;
+            }
             default:
                 // Check if first parameter is a channel
                 if (Message.GetParams().size() > 1) {
@@ -153,3 +185,32 @@ class CLowercaseChanMod : public CModule {
 };
 
 NETWORKMODULEDEFS(CLowercaseChanMod, "Lowercase channel names for all IRC events")
+
+/*
+
+// For testing the module - Only needed if you plan on modifying the module
+
+// make && ./inttest --gtest_filter=ZNCTest.LowercaseChanModule
+
+TEST_F(ZNCTest, LowercaseChanModule) {
+    auto znc = Run();
+    auto ircd = ConnectIRCd();
+    auto client = LoginClient();
+
+    client.Write("znc loadmod lowercasechan");
+    client.ReadUntil("Loaded module");
+
+    ircd.Write(":server 001 nick :Hello");
+
+	// Only test JOIN and /whois.
+	ircd.Write(":test JOIN #TEST");
+	client.ReadUntil("JOIN #test");
+
+	ircd.Write(":server 319 test example :#TEST");
+    client.ReadUntil("server 319 test example :#test");
+
+    ircd.Write(":server 319 test example :##Llamas @#aBCd @#XYZ @+#TEST");
+    client.ReadUntil("server 319 test example :##llamas @#abcd @#xyz @+#test");
+}
+
+*/
