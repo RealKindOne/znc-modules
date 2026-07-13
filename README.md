@@ -64,47 +64,47 @@ I have modified some of the default ZNC modules:
 - **glined**
   - Put G-Line quits in a single window.
 
- - **invite**
+- **invite**
   - Allow people to send channel invites
 
- - **klined**
+- **klined**
   - Put K-Line quits in a single window
 
- - **lowercasechan**
+- **lowercasechan**
   - Lowercase the channel name to your IRC client for all channel events
   - This include channels from `/whois`
 
- - **monitor**
+- **monitor**
   - Use MONITOR
 
- - **myinsanity**
+- **myinsanity**
   - Counts users, channels, and networks you are on
 
- - **notice**
+- **notice**
   - Convert NOTICE from people on a list into PRIVMSG
 
- - **partyline**
+- **partyline**
   - Resurrected from git.
   - Multi-network support. Join partyline channel on only one network instead of all
   - PRIVMSG's via /msg ?NICK are still sent to all networks
 
- - **pretendclient**
+- **pretendclient**
   - Make znc disconnect/connect from irc networks like a real client
 
- - **rawlog**
+- **rawlog**
   - Raw log
 
- - **roulette**
+- **roulette**
   - Game of roulette
 
- - **shutdown**
+- **shutdown**
   - Shutdown your ZNC remotely. Does not save config. Run at own risk.
 
- - **stripinput**
+- **stripinput**
   - Strip clientside input
 
- - **striptopic**
+- **striptopic**
   - Strip /topic message
 
- - **zlined**
+- **zlined**
   - Put Z-Line quits in a single window
