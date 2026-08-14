@@ -55,6 +55,9 @@ I have modified some of the default ZNC modules:
 - **channelurl**
   - Hide channel URL numeric from clients.
 
+- **clientrestrict**
+  - Prevent IRC clients from sending specific commands based on Client ID.
+
 - **disconnectonban**
   - Disconnect from network when banned.
 
